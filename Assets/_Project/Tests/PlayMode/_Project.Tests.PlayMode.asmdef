@@ -1,0 +1,19 @@
+{
+    "name": "_Project.Tests.PlayMode",
+    "rootNamespace": "",
+    "references": [
+        "GUID:be07e9916f28006438f81a92effebdd5",
+        "GUID:b0214a6008ed146ff8f122a6a9c2f6cc",
+        "GUID:0acc523941302664db1f4e527237feb3",
+        "GUID:27619889b8ba8c24980f49ee34dbb44a"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
