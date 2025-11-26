@@ -26,6 +26,14 @@ public class CafeView : MonoBehaviour, ICafeView
     [SerializeField]
     private MenuSlot _slotPrefab;
 
+    [Header("UI Components")]
+    [SerializeField]
+    private MenuSelectionBar _menuSelectionBar; // プレハブではなくシーン配置 or 生成されたインスタンス
+
+    // テスト用: Inspector で全メニューデータを割り当てる (本来は Presenter から渡される)
+    [SerializeField]
+    private MenuItemMaster _debugMenuMaster;
+
     // View が管理するスロットのリスト
     private readonly List<MenuSlot> _instantiatedSlots = new List<MenuSlot>();
 
@@ -37,6 +45,8 @@ public class CafeView : MonoBehaviour, ICafeView
     /// </summary>
     public event Action<int> OnMenuSlotClicked;
 
+    public event Action<string> OnMenuSelected;
+
 
     // --- Unity ライフサイクル ---
 
@@ -45,6 +55,13 @@ public class CafeView : MonoBehaviour, ICafeView
     /// </summary>
     private void Start()
     {
+        // 初期化: バーを閉じておく
+        if (_menuSelectionBar != null)
+        {
+            _menuSelectionBar.Close();
+            _menuSelectionBar.OnMenuSelected += HandleMenuSelected;
+        }
+
         // TODO: 将来のタスクで、プレイヤーやアニマルのデータ (Model) に基づいて生成する
         SpawnSlot(0); // ダミー: プレイヤースロット
         SpawnSlot(1); // ダミー: お手伝いアニマル1
@@ -77,7 +94,25 @@ public class CafeView : MonoBehaviour, ICafeView
         // スロットをタップすると、コンソールログ等でタップイベントが確認できる
         Debug.Log($"[CafeView] メニュースロット {index} がタップされました。");
 
+        // スロットタップでメニュー選択バーが表示される
+        // 本来は Presenter 経由で行うが、UI テストのためここで直接開く
+        if (_menuSelectionBar != null && _debugMenuMaster != null)
+        {
+            _menuSelectionBar.Open(_debugMenuMaster.Items);
+        }
+
         // Presenter (購読者がいれば) インデックスを通知
         OnMenuSlotClicked?.Invoke(index);
+    }
+
+    // バーでメニューが選ばれた時の挙動
+    private void HandleMenuSelected(string menuId)
+    {
+        // ID ログ確認 & 閉じる
+        Debug.Log($"[CafeView] Menu Selected: ID = {menuId}");
+
+        _menuSelectionBar.Close();
+
+        OnMenuSelected?.Invoke(menuId);
     }
 }

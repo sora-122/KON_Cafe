@@ -11,4 +11,10 @@ public interface ICafeView
     /// (引数はスロットのインデックス)
     /// </summary>
     event Action<int> OnMenuSlotClicked;
+
+    /// <summary>
+    /// メニュー選択バーでメニューが選ばれたときのイベント
+    /// (引数はメニュー ID )
+    /// </summary>
+    event Action<string> OnMenuSelected;
 }
