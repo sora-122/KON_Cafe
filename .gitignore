@@ -98,3 +98,7 @@ InitTestScene*.unity*
 # Auto-generated scenes by play mode tests
 /[Aa]ssets/[Ii]nit[Tt]est[Ss]cene*.unity*
 Assets/_Recovery/
+
+# 有料アセット隔離用 (Paid Assets)
+Assets/PaidAssets/
+Assets/PaidAssets.meta
