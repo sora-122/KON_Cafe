@@ -30,10 +30,6 @@ public class CafeView : MonoBehaviour, ICafeView
     [SerializeField]
     private MenuSelectionBar _menuSelectionBar; // プレハブではなくシーン配置 or 生成されたインスタンス
 
-    // テスト用: Inspector で全メニューデータを割り当てる (本来は Presenter から渡される)
-    [SerializeField]
-    private MenuItemMaster _debugMenuMaster;
-
     // View が管理するスロットのリスト
     private readonly List<MenuSlot> _instantiatedSlots = new List<MenuSlot>();
 
@@ -46,6 +42,22 @@ public class CafeView : MonoBehaviour, ICafeView
     public event Action<int> OnMenuSlotClicked;
 
     public event Action<string> OnMenuSelected;
+
+    public void UpdateSlotState(int slotIndex, bool isCooking)
+    {
+        if (slotIndex >= 0 && slotIndex < _instantiatedSlots.Count)
+        {
+            _instantiatedSlots[slotIndex].SetCookingState(isCooking);
+        }
+    }
+
+    public void UpdateStockDisplay(string itemId, int newCount)
+    {
+        // ストック数の増加確認
+        // まだ専用UIが無いため、受入基準に従いログで確認する
+        // (専用UIが出来たら、ここで Text を更新する)
+        Debug.Log($"[CafeView] 在庫更新: {itemId} = {newCount}個");
+    }
 
 
     // --- Unity ライフサイクル ---
@@ -94,15 +106,16 @@ public class CafeView : MonoBehaviour, ICafeView
         // スロットをタップすると、コンソールログ等でタップイベントが確認できる
         Debug.Log($"[CafeView] メニュースロット {index} がタップされました。");
 
-        // スロットタップでメニュー選択バーが表示される
-        // 本来は Presenter 経由で行うが、UI テストのためここで直接開く
-        if (_menuSelectionBar != null && _debugMenuMaster != null)
-        {
-            _menuSelectionBar.Open(_debugMenuMaster.Items);
-        }
-
         // Presenter (購読者がいれば) インデックスを通知
         OnMenuSlotClicked?.Invoke(index);
+    }
+
+    public void ShowMenuSelection(IReadOnlyList<MenuItemData> menuItems)
+    {
+        if (_menuSelectionBar != null)
+        {
+            _menuSelectionBar.Open(menuItems);
+        }
     }
 
     // バーでメニューが選ばれた時の挙動
