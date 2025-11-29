@@ -15,6 +15,9 @@ public class MenuSlot : MonoBehaviour
     [SerializeField]
     private Image _iconImage;
 
+    [SerializeField]
+    private GameObject _cookingMask;
+
     private Button _button;
 
     private void Awake()
@@ -30,9 +33,13 @@ public class MenuSlot : MonoBehaviour
         OnClicked?.Invoke(this);
     }
 
-    // (将来のタスク用)
-    // public void SetIcon(Sprite icon)
-    // {
-    //     _iconImage.sprite = icon;
-    // }
+    /// <summary>
+    /// スロット状態 (調理中かどうか) を切り替える
+    /// </summary>
+    public void SetCookingState(bool isCooking)
+    {
+        // 調理中はマスクを表示し、ボタンを押せないようにする
+        if (_cookingMask != null) _cookingMask.SetActive(isCooking);
+        _button.interactable = !isCooking;
+    }
 }
