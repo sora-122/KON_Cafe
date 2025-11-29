@@ -36,6 +36,10 @@ public class CafePresenter : IStartable, IDisposable
         // 在庫変動
         _model.OnStockChanged += HandleStockChanged;
 
+        // アプリ開始時、マスターデータを View に渡して在庫リスト枠を作成させる
+        var allItems = _masterData.GetAllMenuItems();
+        _view.InitializeStockList(allItems);
+
         // スロット状態変化 (スロット 0, 1 を監視)
         // ※本来は動的生成だが現時点では固定
         for (int i = 0; i < 2; i++)

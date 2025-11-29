@@ -29,6 +29,8 @@ public class CafeView : MonoBehaviour, ICafeView
     [Header("UI Components")]
     [SerializeField]
     private MenuSelectionBar _menuSelectionBar; // プレハブではなくシーン配置 or 生成されたインスタンス
+    [SerializeField]
+    private StockListBar _stockListBar;
 
     // View が管理するスロットのリスト
     private readonly List<MenuSlot> _instantiatedSlots = new List<MenuSlot>();
@@ -51,12 +53,23 @@ public class CafeView : MonoBehaviour, ICafeView
         }
     }
 
+    public void InitializeStockList(IReadOnlyList<MenuItemData> allItems)
+    {
+        if (_stockListBar != null)
+        {
+            _stockListBar.Initialize(allItems);
+        }
+    }
+
     public void UpdateStockDisplay(string itemId, int newCount)
     {
-        // ストック数の増加確認
-        // まだ専用UIが無いため、受入基準に従いログで確認する
-        // (専用UIが出来たら、ここで Text を更新する)
+        // ストック数の増加確認ログ
         Debug.Log($"[CafeView] 在庫更新: {itemId} = {newCount}個");
+
+        if (_stockListBar != null)
+        {
+            _stockListBar.UpdateStock(itemId, newCount);
+        }
     }
 
 

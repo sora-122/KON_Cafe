@@ -27,6 +27,9 @@ public class MenuItemData : ScriptableObject
     [SerializeField, Tooltip("Inspectorでの表示名 (例: 'コーヒー')")]
     private string _displayName;
 
+    [SerializeField, Tooltip("メニューのアイコン画像")]
+    private Sprite _icon;
+
     [SerializeField, Tooltip("メニューの分類")]
     private MenuItemCategory _category;
 
@@ -40,7 +43,19 @@ public class MenuItemData : ScriptableObject
     // Unity C# コーディング規約に従い、Publicプロパティは PascalCase で命名
     public string ItemId => _itemId;
     public string DisplayName => _displayName;
+    public Sprite Icon => _icon;
     public MenuItemCategory Category => _category;
     public int SlotsUsed => _slotsUsed;
     public float CreationTimeSeconds => _creationTimeSeconds;
+
+    // --- バリデーターの先取り実装 ---
+    // Unity エディタ上で値を変更した瞬間にチェックが走る
+    private void OnValidate()
+    {
+        if (_icon == null)
+        {
+            // アイコン未設定を警告
+            Debug.LogWarning($"[MenuItemData] Item '{_itemId}' にアイコンが設定されていません！", this);
+        }
+    }
 }

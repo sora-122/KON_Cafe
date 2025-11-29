@@ -33,4 +33,9 @@ public interface ICafeView
     /// メニュー選択バーを表示する
     /// </summary>
     void ShowMenuSelection(IReadOnlyList<MenuItemData> menuItems);
+
+    /// <summary>
+    /// 在庫リスト表示を初期化する
+    /// </summary>
+    void InitializeStockList(IReadOnlyList<MenuItemData> allItems);
 }
