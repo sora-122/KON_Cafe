@@ -31,6 +31,9 @@ public class CafeView : MonoBehaviour, ICafeView
     private MenuSelectionBar _menuSelectionBar; // プレハブではなくシーン配置 or 生成されたインスタンス
     [SerializeField]
     private StockListBar _stockListBar;
+    [SerializeField]
+    private TaskListPanel _taskListPanel;
+
 
     // View が管理するスロットのリスト
     private readonly List<MenuSlot> _instantiatedSlots = new List<MenuSlot>();
@@ -69,6 +72,14 @@ public class CafeView : MonoBehaviour, ICafeView
         if (_stockListBar != null)
         {
             _stockListBar.UpdateStock(itemId, newCount);
+        }
+    }
+
+    public void AddCustomerTask(CustomerTask task)
+    {
+        if (_taskListPanel != null)
+        {
+            _taskListPanel.AddTask(task);
         }
     }
 

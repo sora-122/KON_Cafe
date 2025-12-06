@@ -9,17 +9,33 @@ public class MasterDataRepository : IMasterDataRepository
 {
     // Unity C# コーディング規約に従い、private フィールドは _camelCase
     private readonly Dictionary<string, MenuItemData> _itemDictionary;
+    private readonly Dictionary<string, AnimalData> _animalDictionary;
 
     // VContainer から MenuItemMaster (SO) を注入してもらう
-    public MasterDataRepository(MenuItemMaster master)
+    public MasterDataRepository(MenuItemMaster itemMaster, AnimalMaster animalMaster)
     {
-        _itemDictionary = master.Items
+        // --- 1．メニューデータの構築 ---
+        // GroupBy で重複を排除して Dictionary に変換し、安全に処理する
+        _itemDictionary = itemMaster.Items
             .GroupBy(item => item.ItemId)
             .ToDictionary(group => group.Key, group => group.First());
 
-        if (_itemDictionary.Count != master.Items.Count)
+        // 重複があった場合は警告を出す
+        if (_itemDictionary.Count != itemMaster.Items.Count)
         {
             Debug.LogWarning("[MasterDataRepository] メニューアイテム ID に重複があります。MenuItemMaster を確認してください。");
+        }
+
+        // --- 2．アニマルデータの構築 ---
+        // アニマルデータも同様に GroupBy で重複を排除して Dictionary に変換し、安全に処理する
+        _animalDictionary = animalMaster.Animals
+            .GroupBy(animal => animal.Id)
+            .ToDictionary(group => group.Key, group => group.First());
+
+        // アニマルの重複チェック警告
+        if (_animalDictionary.Count != animalMaster.Animals.Count)
+        {
+            Debug.LogWarning("[MasterDataRepository] アニマル ID に重複があります。AnimalMaster を確認してください。");
         }
     }
 
@@ -29,8 +45,17 @@ public class MasterDataRepository : IMasterDataRepository
         {
             return data;
         }
-
         Debug.LogError($"[MasterDataRepository] Item ID: {itemId} が見つかりません。");
+        return null;
+    }
+
+    public AnimalData GetAnimalById(string id)
+    {
+        if (_animalDictionary.TryGetValue(id, out var data))
+        {
+            return data;
+        }
+        Debug.LogError($"[MasterDataRepository] Animal ID: {id} が見つかりません。");
         return null;
     }
 

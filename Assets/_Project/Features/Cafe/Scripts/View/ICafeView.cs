@@ -38,4 +38,9 @@ public interface ICafeView
     /// 在庫リスト表示を初期化する
     /// </summary>
     void InitializeStockList(IReadOnlyList<MenuItemData> allItems);
+
+    /// <summary>
+    /// 新しい来店タスクを表示する
+    /// </summary>
+    void AddCustomerTask(CustomerTask task);
 }
