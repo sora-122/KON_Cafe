@@ -14,4 +14,9 @@ public interface IMasterDataRepository
     /// 全てのメニューデータを取得する
     /// </summary>
     IReadOnlyList<MenuItemData> GetAllMenuItems();
+
+    /// <summary>
+    /// ID を指定してアニマルデータを取得する
+    /// </summary>
+    AnimalData GetAnimalById(string id);
 }

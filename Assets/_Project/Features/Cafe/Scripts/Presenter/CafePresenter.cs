@@ -40,6 +40,9 @@ public class CafePresenter : IStartable, IDisposable
         var allItems = _masterData.GetAllMenuItems();
         _view.InitializeStockList(allItems);
 
+        // 仮の来店イベント発生
+        SpawnDebugCustomer();
+
         // スロット状態変化 (スロット 0, 1 を監視)
         // ※本来は動的生成だが現時点では固定
         for (int i = 0; i < 2; i++)
@@ -52,6 +55,32 @@ public class CafePresenter : IStartable, IDisposable
 
             // 調理完了時の在庫加算
             slot.OnCookingCompleted += (itemId) => _model.AddStock(itemId);
+        }
+    }
+
+    private void SpawnDebugCustomer()
+    {
+        // テスト用データID (※実際に存在するIDを指定)
+        string debugAnimalId = "fox";
+        string debugMenuId = "coffee";
+
+        var animal = _masterData.GetAnimalById(debugAnimalId);
+        var menu = _masterData.GetMenuItemById(debugMenuId);
+
+        if (animal != null && menu != null)
+        {
+            // タスク生成 (ID は仮で GUID 等)
+            var task = new CustomerTask(System.Guid.NewGuid().ToString(), animal, menu);
+
+            // 表示
+            _view.AddCustomerTask(task);
+
+            // ログ確認
+            Debug.Log($"[CafePresenter] 来店: {animal.DisplayName} が {menu.DisplayName} を注文しました。");
+        }
+        else
+        {
+            Debug.LogWarning("[CafePresenter] デバッグ用のアニマルまたはメニューが見つかりません。IDを確認してください。");
         }
     }
 

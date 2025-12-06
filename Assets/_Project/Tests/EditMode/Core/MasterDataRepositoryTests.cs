@@ -1,6 +1,7 @@
 using NUnit.Framework;
 using UnityEngine;
 using System.Collections.Generic;
+using System.Linq;
 
 /// <summary>
 /// MasterDataRepository のロジックを検証するEditModeテスト
@@ -8,74 +9,83 @@ using System.Collections.Generic;
 public class MasterDataRepositoryTests
 {
     private IMasterDataRepository _repository;
-    private MenuItemMaster _mockMaster;
 
-    private MenuItemData _itemA;
-    private MenuItemData _itemB;
+    // テストで使用するロード済みテーブル
+    private MenuItemMaster _loadedItemMaster;
+    private AnimalMaster _loadedAnimalMaster;
+
 
     [SetUp]
     public void SetUp()
     {
-        // --- 1．テスト用のダミーデータ (SO) を作成 ---
-        // (通常SOはUnityエディターで作成するが、テストではScriptableObject.CreateInstance でメモリ上に作成)
+        // --- 1．準備 (Arrange) ---
+        // Unity Editor で作成した実データを使用する方針のため、Resources.Load を行う
 
-        _mockMaster = ScriptableObject.CreateInstance<MenuItemMaster>();
+        // A. メニューマスターのロード
+        _loadedItemMaster = Resources.Load<MenuItemMaster>("MasterData/MenuItemMaster");
+        Assert.IsNotNull(_loadedItemMaster, "前提条件: MenuItemMaster.asset が Resources/MasterData/ に存在しません。");
+        // データが空でもテスト自体は動くように、Count チェックは一旦は外すか、Warn にする運用も可
+        if (_loadedItemMaster.Items.Count == 0) Debug.LogWarning("MenuItemMaster にアイテムが登録されていません。");
 
-        _itemA = ScriptableObject.CreateInstance<MenuItemData>();
-        // リフレクション等で private Field をセットする代わりに、
-        // テストを容易にするために Item ID をセットするメソッドを MenuItemData に用意する
-        // (※またはJsonUtility.FromJsonOverwrite で疑似的にデータを設定する)
-        // (※ここでは簡潔さのため、もし MenuItemData の setter が internal/public ならそれを使う想定。
-        //    もし private のみなら、このテストコードはコンパイルエラーになるか、
-        //    MenuItemData に #if UNITY_EDITOR ... internal void SetItemIdForTest() ... #endif
-        //    といったテスト用メソッドが必要になる。)
+        // B. アニマルマスターのロード
+        _loadedAnimalMaster = Resources.Load<AnimalMaster>("MasterData/AnimalMaster");
+        Assert.IsNotNull(_loadedAnimalMaster, "前提条件: AnimalMaster.asset が Resources/MasterData/ に存在しません。");
 
-        // 仮: テストのため、MenuItemData に以下のようなメソッドを追加したと仮定します。
-        // public void SetDataForTest(string id, float time) { _itemId = id; _creationTimeSeconds = time;}
-
-        // _itemA.SetDataForTest("coffee", 3.0f);
-        // _itemB.SetDataForTest("tea", 3.0f);
-
-        // (上記が難しい場合、テスト用のアセットを Unityエディター で作成し、
-        //  AssetDataBase.LoadAssetPath<T> で読み込む方法もあります)
-
-        // --- 2．リポジトリを初期化 ---
-        // (ここでは簡略化のため、_mockMaster に直接 List をセットする前提)
-        // _mockMaster.Items = new List<MenuItemData> { _itemA, _itemB };
-
-        // _repository = new MasterDataRepository(_mockMaster);
-
-        // 【重要】
-        // SO の動的生成とセッターの準備が複雑なため、
-        // このテストは「Unityエディター で MenuItemData.asset(全メニュー[コーヒー、
-        // 紅茶、パフェ等]) と MenuItemMaster.asset(データベース) ファイルを作成した後」
-        // に実行することを前提とし、Installer 経由で取得するロジックをテストします。
+        // --- 2．テスト対象のクラスを初期化 ---
+        _repository = new MasterDataRepository(_loadedItemMaster, _loadedAnimalMaster);
     }
 
+    /// <summary>
+    /// メニューデータを ID で取得できるか検証
+    /// </summary>
     [Test]
     public void Test_RepositoryCanGetItemById()
     {
-        // --- 1．準備 (Arrange) ---
-        // Unity Editor で
-        // "Assets/_Project/Core/Resources/MasterData/MenuItemMaster.asset"
-        // が正しく設定されていることを前提とします。
+        // データが存在しない場合はスキップ
+        if (_loadedItemMaster.Items.Count == 0)
+        {
+            Assert.Ignore("MenuItemMaster にデータが無いためテストをスキップします。");
+            return;
+        }
 
-        var master = Resources.Load<MenuItemMaster>("MasterData/MenuItemMaster");
-        Assert.IsNotNull(master, "前提条件: MenuItemMaster.asset が Resources/MasterData/ に存在しません。");
-        Assert.Greater(master.Items.Count, 0, "前提条件: MenuItemMaster にアイテムが1つも登録されていません。");
+        // 期待値: リストの最初のアイテムを正解とする
+        var expectedItem = _loadedItemMaster.Items[0];
+        string targetId = expectedItem.ItemId;
 
-        var repository = new MasterDataRepository(master);
+        // 実行
+        var result = _repository.GetMenuItemById(targetId);
 
-        // --- 2．実行 (Act) ---
-        // GDD に存在するはずの "coffee" (ItemID) を取得してみる
-        // (MenuItemData アセットの ItemID フィールドに "coffee" が設定されている必要があります。)
-        string targetId = "coffee";
-        var result = repository.GetMenuItemById(targetId);
-
-        // --- 3．検証 (Assert) ---
+        // 検証
         Assert.IsNotNull(result, $"検証失敗: ID '{targetId}' でアイテムを取得できませんでした。");
-        Assert.AreEqual(targetId, result.ItemId, "検証失敗: 取得したアイテムの ID が異なります。");
+        Assert.AreEqual(expectedItem.ItemId, result.ItemId, "検証失敗: 取得したアイテムの ID が異なります。");
 
-        Debug.Log($"[Test Success] 検証成功: ID '{targetId}' で {result.DisplayName} を取得できました。");
+        Debug.Log($"[Test Success] GetMenuItemById 検証成功: ID '{targetId}' で {result.DisplayName} を取得できました。");
+    }
+
+    /// <summary>
+    /// アニマルデータを ID で取得できるか検証
+    /// </summary>
+    [Test]
+    public void Test_RepositoryCanGetAnimalById()
+    {
+        // データが存在しない場合はスキップ
+        if (_loadedAnimalMaster.Animals.Count == 0)
+        {
+            Assert.Ignore("AnimalMaster にデータが無いためテストをスキップします。");
+            return;
+        }
+
+        // 期待値: リストの最初のアイテムを正解とする
+        var expectedAnimal = _loadedAnimalMaster.Animals[0];
+        string targetId = expectedAnimal.Id;
+
+        // 実行
+        var result = _repository.GetAnimalById(targetId);
+
+        // 検証
+        Assert.IsNotNull(result, $"検証失敗: ID '{targetId}' でアニマルを取得できませんでした。");
+        Assert.AreEqual(expectedAnimal.Id, result.Id, "検証失敗: 取得したアニマルの ID が異なります。");
+
+        Debug.Log($"[Test Success] GetAnimalById 検証成功: ID '{targetId}' で {result.DisplayName} を取得できました。");
     }
 }
