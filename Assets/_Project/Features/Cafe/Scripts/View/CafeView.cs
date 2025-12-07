@@ -48,6 +48,8 @@ public class CafeView : MonoBehaviour, ICafeView
 
     public event Action<string> OnMenuSelected;
 
+    public event Action<string> OnTaskClicked;
+
     public void UpdateSlotState(int slotIndex, bool isCooking)
     {
         if (slotIndex >= 0 && slotIndex < _instantiatedSlots.Count)
@@ -83,6 +85,22 @@ public class CafeView : MonoBehaviour, ICafeView
         }
     }
 
+    public void RemoveCustomerTask(string taskId)
+    {
+        if (_taskListPanel != null)
+        {
+            _taskListPanel.RemoveTask(taskId);
+        }
+    }
+
+    public void UpdateTaskCompletable(string taskId, bool isCompletable)
+    {
+        if (_taskListPanel != null)
+        {
+            _taskListPanel.UpdateTaskState(taskId, isCompletable);
+        }
+    }
+
 
     // --- Unity ライフサイクル ---
 
@@ -98,8 +116,14 @@ public class CafeView : MonoBehaviour, ICafeView
             _menuSelectionBar.OnMenuSelected += HandleMenuSelected;
         }
 
+        // TaskListPanel からのイベント転送
+        if (_taskListPanel != null)
+        {
+            _taskListPanel.OnTaskClicked += (taskId) => OnTaskClicked?.Invoke(taskId);
+        }
+
         // TODO: 将来のタスクで、プレイヤーやアニマルのデータ (Model) に基づいて生成する
-        SpawnSlot(0); // ダミー: プレイヤースロット
+            SpawnSlot(0); // ダミー: プレイヤースロット
         SpawnSlot(1); // ダミー: お手伝いアニマル1
     }
 

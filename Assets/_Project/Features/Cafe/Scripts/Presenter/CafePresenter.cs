@@ -31,10 +31,19 @@ public class CafePresenter : IStartable, IDisposable
         // --- View イベントの購読 ---
         _view.OnMenuSlotClicked += HandleSlotClicked;
         _view.OnMenuSelected += HandleMenuSelected;
+        _view.OnTaskClicked += HandleTaskClicked;
 
         // --- Model イベントの購読 ---
         // 在庫変動
         _model.OnStockChanged += HandleStockChanged;
+
+        // Model のタスク変動を View に反映
+        _model.OnTaskAdded += (task) =>
+        {
+            _view.AddCustomerTask(task);
+            CheckTaskCompletable(task); // 追加直後にも在庫チェック
+        };
+        _model.OnTaskRemoved += (task) => _view.RemoveCustomerTask(task);
 
         // アプリ開始時、マスターデータを View に渡して在庫リスト枠を作成させる
         var allItems = _masterData.GetAllMenuItems();
@@ -73,7 +82,9 @@ public class CafePresenter : IStartable, IDisposable
             var task = new CustomerTask(System.Guid.NewGuid().ToString(), animal, menu);
 
             // 表示
-            _view.AddCustomerTask(task);
+            // View 直接ではなく Model に追加する形に変更
+            _model.AddTask(task);
+            // _view.AddCustomerTask(task);
 
             // ログ確認
             Debug.Log($"[CafePresenter] 来店: {animal.DisplayName} が {menu.DisplayName} を注文しました。");
@@ -111,10 +122,49 @@ public class CafePresenter : IStartable, IDisposable
         _currentSelectedSlotIndex = -1;
     }
 
+    // タスクバーがクリックされた (完了試行)
+    private void HandleTaskClicked(string taskId)
+    {
+        // Model に完了を依頼
+        bool success = _model.TryCompleteTask(taskId);
+
+        if (success)
+        {
+            Debug.Log($"[CafePresenter] タスク完了！ ID: {taskId}");
+
+            // 在庫が減ったので、残りのタスクの完了可否を再チェック
+            RefreshAllTasksCompletable();
+        }
+    }
+
     // 在庫が変動した
     private void HandleStockChanged(string itemId, int count)
     {
         _view.UpdateStockDisplay(itemId, count);
+
+        // 在庫が変わったので、全タスクの完了可否を再チェック
+        RefreshAllTasksCompletable();
+    }
+
+    // タスク完了可否のチェックロジック
+    // 全タスクの状態更新 (LINQ なし)
+    private void RefreshAllTasksCompletable()
+    {
+        var tasks = _model.GetActiveTasks();
+        foreach (var kvp in tasks)
+        {
+            CheckTaskCompletable(kvp.Value);
+        }
+    }
+
+    // 個別タスクの状態チェック
+    private void CheckTaskCompletable(CustomerTask task)
+    {
+        int stock = _model.GetStockCount(task.OrderItem.ItemId);
+        bool isCompletable = stock > 0;
+
+        // View に通知
+        _view.UpdateTaskCompletable(task.TaskId, isCompletable);
     }
 
     public void Dispose()
@@ -122,6 +172,7 @@ public class CafePresenter : IStartable, IDisposable
         // イベント購読解除 (省略可ではあるがマナーとして)
         _view.OnMenuSlotClicked -= HandleSlotClicked;
         _view.OnMenuSelected -= HandleMenuSelected;
+        _view.OnTaskClicked -= HandleTaskClicked;
 
         _model.OnStockChanged -= HandleStockChanged;
 

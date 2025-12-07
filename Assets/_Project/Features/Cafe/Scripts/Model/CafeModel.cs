@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using Cysharp.Threading.Tasks;
+using UnityEngine;
 
 /// <summary>
 /// カフェ運営のデータとビジネスロジックを保持する Model
@@ -12,13 +13,20 @@ public class CafeModel : IDisposable
     // 在庫更新イベント (ItemID, 新しい在庫数)
     public event Action<string, int> OnStockChanged;
 
+    // タスク増減イベント
+    public event Action<CustomerTask> OnTaskAdded;
+    public event Action<string> OnTaskRemoved;
+
     // スロット (本来は動的に増えるが、現時点では固定数2で実装)
     private readonly CookingSlot[] _slots;
 
     //  在庫データ (ItemId -> Count)
     private readonly Dictionary<string, int> _stockInventory = new Dictionary<string, int>();
 
-    // 非同期処理キャンセル用
+    // アクティブなタスクリスト (TaskID -> CustomerTask)
+    private readonly Dictionary<string, CustomerTask> _activeTasks = new Dictionary<string, CustomerTask>();
+
+    // 非同期処理キャンセル用トークン
     private readonly CancellationTokenSource _cts = new CancellationTokenSource();
 
     // カフェ運営シーン (CafeOperation.unity) 起動時 (初期化時) に一度だけ実行するメソッド
@@ -69,6 +77,55 @@ public class CafeModel : IDisposable
 
         // 通知
         OnStockChanged?.Invoke(itemId, _stockInventory[itemId]);
+    }
+
+    /// <summary>
+    /// 在庫数取得メソッド
+    /// </summary>
+    public int GetStockCount(string itemId)
+    {
+        return _stockInventory.TryGetValue(itemId, out int count) ? count : 0;
+    }
+
+    /// <summary>
+    /// タスク管理と完了判定メソッド
+    /// </summary>
+    public void AddTask(CustomerTask task)
+    {
+        _activeTasks[task.TaskId] = task;
+        OnTaskAdded?.Invoke(task);
+    }
+
+    /// <summary>
+    /// タスク完了を試みる
+    /// </summary>
+    /// <returns> 成功したら true </returns>
+    public bool TryCompleteTask(string taskId)
+    {
+        if (!_activeTasks.TryGetValue(taskId, out var task)) return false;
+
+        string requiredItemId = task.OrderItem.ItemId;
+        int currentStock = GetStockCount(requiredItemId);
+
+        // 在庫チェック
+        if (currentStock > 0)
+        {
+            _stockInventory[requiredItemId]--;
+            OnStockChanged?.Invoke(requiredItemId, _stockInventory[requiredItemId]);
+
+            // タスク削除
+            _activeTasks.Remove(taskId);
+            OnTaskRemoved?.Invoke(taskId);
+
+            return true;
+        }
+
+        return false;
+    }
+
+    public IReadOnlyDictionary<string, CustomerTask> GetActiveTasks()
+    {
+        return _activeTasks;
     }
 
     public void Dispose()

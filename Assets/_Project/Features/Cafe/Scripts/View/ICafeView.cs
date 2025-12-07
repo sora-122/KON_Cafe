@@ -20,6 +20,12 @@ public interface ICafeView
     event Action<string> OnMenuSelected;
 
     /// <summary>
+    /// タスクバーがクリックされたときのイベント
+    /// (引数はタスク ID)
+    /// </summary>
+    event Action<string> OnTaskClicked;
+
+    /// <summary>
     /// 指定スロットの見た目状態を更新する
     /// </summary>
     void UpdateSlotState(int slotIndex, bool isCooking);
@@ -43,4 +49,14 @@ public interface ICafeView
     /// 新しい来店タスクを表示する
     /// </summary>
     void AddCustomerTask(CustomerTask task);
+
+    /// <summary>
+    /// タスク表示を削除する
+    /// </summary>
+    void RemoveCustomerTask(string taskId);
+
+    /// <summary>
+    /// タスクの強調表示を更新する
+    /// </summary>
+    void UpdateTaskCompletable(string taskId, bool isCompletable);
 }
