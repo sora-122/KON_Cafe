@@ -59,4 +59,9 @@ public interface ICafeView
     /// タスクの強調表示を更新する
     /// </summary>
     void UpdateTaskCompletable(string taskId, bool isCompletable);
+
+    /// <summary>
+    /// スコア表示を更新する
+    /// </summary>
+    void UpdateScoreDisplay(int newScore);
 }

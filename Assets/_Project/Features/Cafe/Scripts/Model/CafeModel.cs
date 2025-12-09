@@ -17,6 +17,9 @@ public class CafeModel : IDisposable
     public event Action<CustomerTask> OnTaskAdded;
     public event Action<string> OnTaskRemoved;
 
+    // スコア更新イベント
+    public event Action<int> OnScoreChanged;
+
     // スロット (本来は動的に増えるが、現時点では固定数2で実装)
     private readonly CookingSlot[] _slots;
 
@@ -25,6 +28,9 @@ public class CafeModel : IDisposable
 
     // アクティブなタスクリスト (TaskID -> CustomerTask)
     private readonly Dictionary<string, CustomerTask> _activeTasks = new Dictionary<string, CustomerTask>();
+
+    // 現在のスコア
+    private int _currentScore = 0;
 
     // 非同期処理キャンセル用トークン
     private readonly CancellationTokenSource _cts = new CancellationTokenSource();
@@ -117,10 +123,20 @@ public class CafeModel : IDisposable
             _activeTasks.Remove(taskId);
             OnTaskRemoved?.Invoke(taskId);
 
+            // タスク完了時にスコア加算 (現時点では固定値 100)
+            AddScore(100);
+
             return true;
         }
 
         return false;
+    }
+
+    // スコア加算メソッド
+    private void AddScore(int amount)
+    {
+        _currentScore += amount;
+        OnScoreChanged?.Invoke(_currentScore);
     }
 
     public IReadOnlyDictionary<string, CustomerTask> GetActiveTasks()

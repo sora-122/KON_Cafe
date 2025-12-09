@@ -36,6 +36,7 @@ public class CafePresenter : IStartable, IDisposable
         // --- Model イベントの購読 ---
         // 在庫変動
         _model.OnStockChanged += HandleStockChanged;
+        _model.OnScoreChanged += HandleScoreChanged;
 
         // Model のタスク変動を View に反映
         _model.OnTaskAdded += (task) =>
@@ -146,6 +147,11 @@ public class CafePresenter : IStartable, IDisposable
         RefreshAllTasksCompletable();
     }
 
+    private void HandleScoreChanged(int newScore)
+    {
+        _view.UpdateScoreDisplay(newScore);
+    }
+
     // タスク完了可否のチェックロジック
     // 全タスクの状態更新 (LINQ なし)
     private void RefreshAllTasksCompletable()
@@ -175,6 +181,7 @@ public class CafePresenter : IStartable, IDisposable
         _view.OnTaskClicked -= HandleTaskClicked;
 
         _model.OnStockChanged -= HandleStockChanged;
+        _model.OnScoreChanged -= HandleScoreChanged;
 
         // CafeModel は VContainer が管理しているため
         // VContainer が自動的に Dispose を呼びます

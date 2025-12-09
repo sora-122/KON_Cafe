@@ -33,6 +33,8 @@ public class CafeView : MonoBehaviour, ICafeView
     private StockListBar _stockListBar;
     [SerializeField]
     private TaskListPanel _taskListPanel;
+    [SerializeField]
+    private ScoreCounter _scoreCounter;
 
 
     // View が管理するスロットのリスト
@@ -101,6 +103,14 @@ public class CafeView : MonoBehaviour, ICafeView
         }
     }
 
+    public void UpdateScoreDisplay(int newScore)
+    {
+        if (_scoreCounter != null)
+        {
+            _scoreCounter.UpdateScore(newScore);
+        }
+    }
+
 
     // --- Unity ライフサイクル ---
 
@@ -123,7 +133,7 @@ public class CafeView : MonoBehaviour, ICafeView
         }
 
         // TODO: 将来のタスクで、プレイヤーやアニマルのデータ (Model) に基づいて生成する
-            SpawnSlot(0); // ダミー: プレイヤースロット
+        SpawnSlot(0); // ダミー: プレイヤースロット
         SpawnSlot(1); // ダミー: お手伝いアニマル1
     }
 
