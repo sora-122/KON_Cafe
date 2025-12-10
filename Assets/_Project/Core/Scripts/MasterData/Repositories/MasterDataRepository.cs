@@ -63,5 +63,10 @@ public class MasterDataRepository : IMasterDataRepository
     {
         return _itemDictionary.Values.ToList().AsReadOnly();
     }
+
+    public IReadOnlyList<AnimalData> GetAllAnimals()
+    {
+        return _animalDictionary.Values.ToList().AsReadOnly();
+    }
 }
 
