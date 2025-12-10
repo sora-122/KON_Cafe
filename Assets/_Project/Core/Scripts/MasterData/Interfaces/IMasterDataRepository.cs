@@ -6,9 +6,14 @@ using System.Collections.Generic;
 public interface IMasterDataRepository
 {
     /// <summary>
-    /// AC2: ID を指定してメニューデータを取得する
+    /// ID を指定してメニューデータを取得する
     /// </summary>
     MenuItemData GetMenuItemById(string itemId);
+
+    /// <summary>
+    /// ID を指定してアニマルデータを取得する
+    /// </summary>
+    AnimalData GetAnimalById(string id);
 
     /// <summary>
     /// 全てのメニューデータを取得する
@@ -16,7 +21,7 @@ public interface IMasterDataRepository
     IReadOnlyList<MenuItemData> GetAllMenuItems();
 
     /// <summary>
-    /// ID を指定してアニマルデータを取得する
+    /// 全アニマルデータを取得する
     /// </summary>
-    AnimalData GetAnimalById(string id);
+    IReadOnlyList<AnimalData> GetAllAnimals();
 }

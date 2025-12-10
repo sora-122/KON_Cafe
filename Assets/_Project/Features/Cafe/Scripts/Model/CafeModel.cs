@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using UnityEngine;
@@ -35,15 +36,111 @@ public class CafeModel : IDisposable
     // 非同期処理キャンセル用トークン
     private readonly CancellationTokenSource _cts = new CancellationTokenSource();
 
+    // マスターデータ参照
+    private readonly IMasterDataRepository _masterData;
+
+    // ゲーム状態
+    private bool _isPlaying = false;
+
     // カフェ運営シーン (CafeOperation.unity) 起動時 (初期化時) に一度だけ実行するメソッド
-    public CafeModel()
+    public CafeModel(IMasterDataRepository masterData)
     {
+        _masterData = masterData;
+
         // スロット初期化 (2つ)
         _slots = new CookingSlot[2];
         for (int i = 0; i < _slots.Length; i++)
         {
             _slots[i] = new CookingSlot();
         }
+    }
+
+
+    // --- ゲームループ開始 ---
+
+    /// <summary>
+    /// カフェ運営 (来店ループ) を開始する
+    /// </summary>
+    public void StartGameLoop()
+    {
+        if (_isPlaying) return;
+        _isPlaying = true;
+
+        // 来店ループを Fire and Forget で開始
+        SpawnLoopAsync(_cts.Token).Forget();
+    }
+
+    /// <summary>
+    /// 定期的にアニマルを来店させるループ
+    /// </summary>
+    private async UniTask SpawnLoopAsync(CancellationToken token)
+    {
+        while (_isPlaying && !token.IsCancellationRequested)
+        {
+            // 3～5秒の範囲でランダムな時間待機
+            float waitTime = UnityEngine.Random.Range(3.0f, 5.0f);
+            await UniTask.Delay(TimeSpan.FromSeconds(waitTime), cancellationToken: token);
+
+            // 来店処理
+            TrySpawnCustomer();
+        }
+    }
+
+    /// <summary>
+    /// 来店判定とタスク生成を行う
+    /// </summary>
+    private void TrySpawnCustomer()
+    {
+        // 最大来店数制限 (仮: 基本5体 + スコア/500)
+        int maxCustomer = 5 + (_currentScore / 500);
+        if (_activeTasks.Count >= maxCustomer) return;
+
+        // 1. レアリティ抽選
+        AnimalRarity rarity = GetRandomRarity();
+
+        // 2. 抽選されたレアリティのアニマルをランダムに取得
+        AnimalData animal = GetRandomAnimal(rarity);
+        if (animal == null) return; // データ不足等の場合
+
+        // 3. ランダムなメニューを注文 (将来はアニマルの好物等に対応予定)
+        MenuItemData menu = GetRandomMenu();
+        if (menu == null) return;
+
+        // 4. タスク生成と通知
+        var task = new CustomerTask(Guid.NewGuid().ToString(), animal, menu);
+        AddTask(task);
+
+        Debug.Log($"[CafeModel] New Customer: {animal.DisplayName} ({rarity}), Order: {menu.DisplayName}");
+    }
+
+    private AnimalRarity GetRandomRarity()
+    {
+        // Normal 60%, Rare 30%, SuperRare 10%
+        float roll = UnityEngine.Random.value;
+        if (roll < 0.6f) return AnimalRarity.Normal;
+        if (roll < 0.9f) return AnimalRarity.Rare;
+        return AnimalRarity.SuperRare;
+    }
+
+    private AnimalData GetRandomAnimal(AnimalRarity rarity)
+    {
+        var allAnimals = _masterData.GetAllAnimals();
+
+        // 指定レアリティのアニマルのみ抽出
+        var candidates = allAnimals.Where(a => a.Rarity == rarity).ToList();
+
+        // 指定レアリティのアニマルが居なければ、全アニマルから抽選 (フォールバック)
+        if (candidates.Count == 0) candidates = allAnimals.ToList();
+        if (candidates.Count == 0) return null;
+
+        return candidates[UnityEngine.Random.Range(0, candidates.Count)];
+    }
+
+    private MenuItemData GetRandomMenu()
+    {
+        var allMenus = _masterData.GetAllMenuItems();
+        if (allMenus.Count == 0) return null;
+        return allMenus[UnityEngine.Random.Range(0, allMenus.Count)];
     }
 
     /// <summary>
@@ -146,6 +243,7 @@ public class CafeModel : IDisposable
 
     public void Dispose()
     {
+        _isPlaying = false;
         _cts.Cancel();
         _cts.Dispose();
     }
