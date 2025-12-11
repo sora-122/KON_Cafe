@@ -1,4 +1,6 @@
 using System;
+using System.Threading;
+using Cysharp.Threading.Tasks;
 using VContainer;
 using VContainer.Unity;
 using UnityEngine;
@@ -14,6 +16,8 @@ public class CafePresenter : IStartable, IDisposable
     private readonly IMasterDataRepository _masterData;
 
     private int _currentSelectedSlotIndex = -1; // 現在選択中のスロット
+
+    private readonly CancellationTokenSource _cts = new CancellationTokenSource();
 
     // コンストラクタインジェクション (依存性注入)
     public CafePresenter(
@@ -53,6 +57,9 @@ public class CafePresenter : IStartable, IDisposable
         // ゲームループ (自動来店) を開始
         _model.StartGameLoop();
 
+        // UI タイマー同期ループを開始
+        SyncTimeLoopAsync(_cts.Token).Forget();
+
         // スロット状態変化 (スロット 0, 1 を監視)
         // ※本来は動的生成だが現時点では固定
         for (int i = 0; i < 2; i++)
@@ -65,6 +72,28 @@ public class CafePresenter : IStartable, IDisposable
 
             // 調理完了時の在庫加算
             slot.OnCookingCompleted += (itemId) => _model.AddStock(itemId);
+        }
+    }
+
+    /// <summary>
+    /// 定期的に Model の各タスク残り時間を取得し、View を更新する
+    /// </summary>
+    private async UniTask SyncTimeLoopAsync(CancellationToken token)
+    {
+        while (!token.IsCancellationRequested)
+        {
+            // 毎フレーム更新
+            await UniTask.Yield(PlayerLoopTiming.Update, token);
+
+            // 現在のアクティブなタスク一覧を取得
+            var tasks = _model.GetActiveTasks();
+
+            // 各タスクの時間を View に反映
+            foreach (var kvp in tasks)
+            {
+                var task = kvp.Value;
+                _view.UpdateTaskTime(task.TaskId, task.RemainingTime);
+            }
         }
     }
 
@@ -147,6 +176,9 @@ public class CafePresenter : IStartable, IDisposable
 
     public void Dispose()
     {
+        _cts.Cancel();
+        _cts.Dispose();
+
         // イベント購読解除 (省略可ではあるがマナーとして)
         _view.OnMenuSlotClicked -= HandleSlotClicked;
         _view.OnMenuSelected -= HandleMenuSelected;

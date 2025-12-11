@@ -7,10 +7,18 @@ public class CustomerTask
     public AnimalData Animal { get; }
     public MenuItemData OrderItem { get; }
 
-    public CustomerTask(string taskId, AnimalData animal, MenuItemData orderItem)
+    // 制限時間データ
+    public float TotalTime { get; }
+    public float RemainingTime { get; set; }
+
+
+    public CustomerTask(string taskId, AnimalData animal, MenuItemData orderItem, float timeLimit)
     {
         TaskId = taskId;
         Animal = animal;
         OrderItem = orderItem;
+
+        TotalTime = timeLimit;
+        RemainingTime = timeLimit;
     }
 }

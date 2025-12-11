@@ -68,6 +68,9 @@ public class CafeModel : IDisposable
 
         // 来店ループを Fire and Forget で開始
         SpawnLoopAsync(_cts.Token).Forget();
+
+        // 時間経過ループを Fire and Forget で開始
+        TimeUpdateLoopAsync(_cts.Token).Forget();
     }
 
     /// <summary>
@@ -83,6 +86,56 @@ public class CafeModel : IDisposable
 
             // 来店処理
             TrySpawnCustomer();
+        }
+    }
+
+    /// <summary>
+    /// タスクの制限時間を管理するループ
+    /// </summary>
+    private async UniTask TimeUpdateLoopAsync(CancellationToken token)
+    {
+        // 削除対象を一時保管するリスト (ループ内でのコレクション操作エラー防止)
+        List<string> expiredTaskIds = new List<string>();
+
+        while (_isPlaying && !token.IsCancellationRequested)
+        {
+            // 次フレームまで待機 (Updateタイミング)
+            await UniTask.Yield(PlayerLoopTiming.Update, token);
+
+            float deltaTime = Time.deltaTime;
+            expiredTaskIds.Clear();
+
+            // 全タスクの時間を減らす
+            foreach (var kvp in _activeTasks)
+            {
+                var task = kvp.Value;
+                task.RemainingTime -= deltaTime;
+
+                // 時間切れチェック
+                if (task.RemainingTime <= 0)
+                {
+                    expiredTaskIds.Add(task.TaskId);
+                }
+            }
+
+            // 時間切れタスクの削除処理
+            foreach (var id in expiredTaskIds)
+            {
+                RemoveTask(id);
+            }
+        }
+    }
+
+    /// <summary>
+    /// タスクを削除する (時間切れ含む)
+    /// </summary>
+    private void RemoveTask(string taskId)
+    {
+        if (_activeTasks.ContainsKey(taskId))
+        {
+            _activeTasks.Remove(taskId);
+            OnTaskRemoved?.Invoke(taskId);
+            // 時間切れの場合はスコア加算無し
         }
     }
 
@@ -107,10 +160,12 @@ public class CafeModel : IDisposable
         if (menu == null) return;
 
         // 4. タスク生成と通知
-        var task = new CustomerTask(Guid.NewGuid().ToString(), animal, menu);
+        // 制限時間 (25秒～35秒) を設定してタスク生成
+        float timeLimit = UnityEngine.Random.Range(25.0f, 35.0f);
+        var task = new CustomerTask(Guid.NewGuid().ToString(), animal, menu, timeLimit);
         AddTask(task);
 
-        Debug.Log($"[CafeModel] New Customer: {animal.DisplayName} ({rarity}), Order: {menu.DisplayName}");
+        Debug.Log($"[CafeModel] New Customer: {animal.DisplayName} ({rarity}), Order: {menu.DisplayName}, Time: {timeLimit:F1}s");
     }
 
     private AnimalRarity GetRandomRarity()

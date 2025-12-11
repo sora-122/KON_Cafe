@@ -15,6 +15,7 @@ public class TaskBarElement : MonoBehaviour
     [SerializeField] private Image _animalIcon;
     [SerializeField] private TextMeshProUGUI _orderText;
     [SerializeField] private Image _backgroundImage;
+    [SerializeField] private TextMeshProUGUI _timerText;
 
     private string _taskId;
     private Button _button;
@@ -71,6 +72,21 @@ public class TaskBarElement : MonoBehaviour
         {
             // 注文の必要数に対してストック数が足りていれば見た目を変える (例: 緑色)
             _backgroundImage.color = isCompletable ? new Color(0.6f, 1f, 0.6f) : Color.white;
+        }
+    }
+
+    /// <summary>
+    /// 残り時間の表示を更新する
+    /// </summary>
+    public void UpdateTimer(float remainingSeconds)
+    {
+        if (_timerText != null)
+        {
+            // 整数で表示
+            _timerText.text = Mathf.CeilToInt(remainingSeconds).ToString();
+
+            // 残り5秒以下で見た目を変える (例: 赤色)
+            _timerText.color = remainingSeconds <= 5.0f ? Color.red : Color.black;
         }
     }
 
