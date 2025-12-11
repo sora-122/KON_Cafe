@@ -103,6 +103,14 @@ public class CafeView : MonoBehaviour, ICafeView
         }
     }
 
+    public void UpdateTaskTime(string taskId, float remainingSeconds)
+    {
+        if (_taskListPanel != null)
+        {
+            _taskListPanel.UpdateTaskTime(taskId, remainingSeconds);
+        }
+    }
+
     public void UpdateScoreDisplay(int newScore)
     {
         if (_scoreCounter != null)

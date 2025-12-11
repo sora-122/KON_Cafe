@@ -58,6 +58,17 @@ public class TaskListPanel : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 指定タスクの時間表示を更新する
+    /// </summary>
+    public void UpdateTaskTime(string taskId, float remainingSeconds)
+    {
+        if (_elements.TryGetValue(taskId, out var element))
+        {
+            element.UpdateTimer(remainingSeconds);
+        }
+    }
+
     private void HandleElementClicked(string raskId)
     {
         OnTaskClicked?.Invoke(raskId);

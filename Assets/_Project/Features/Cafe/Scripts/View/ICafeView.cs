@@ -61,6 +61,11 @@ public interface ICafeView
     void UpdateTaskCompletable(string taskId, bool isCompletable);
 
     /// <summary>
+    /// タスクの時間表示を更新する
+    /// </summary>
+    void UpdateTaskTime(string taskId, float remainingSeconds);
+
+    /// <summary>
     /// スコア表示を更新する
     /// </summary>
     void UpdateScoreDisplay(int newScore);
