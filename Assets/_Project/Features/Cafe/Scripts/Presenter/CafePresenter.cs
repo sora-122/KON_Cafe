@@ -41,6 +41,8 @@ public class CafePresenter : IStartable, IDisposable
         // 在庫変動
         _model.OnStockChanged += HandleStockChanged;
         _model.OnScoreChanged += HandleScoreChanged;
+        _model.OnGameTimeUpdated += HandleGameTimeUpdated;
+        _model.OnGameTimeOver += HandleGameTimeOver;
 
         // Model のタスク変動を View に反映
         _model.OnTaskAdded += (task) =>
@@ -153,6 +155,17 @@ public class CafePresenter : IStartable, IDisposable
         _view.UpdateScoreDisplay(newScore);
     }
 
+    private void HandleGameTimeUpdated(float remainingTime)
+    {
+        _view.UpdateGameTime(remainingTime);
+    }
+
+    private void HandleGameTimeOver(GameResult result)
+    {
+        Debug.Log($"[CafePresenter] Game Over! Score = {result.Score}, Rank: {result.Rank}");
+        _view.ShowResultPopup(result);
+    }
+
     // タスク完了可否のチェックロジック
     // 全タスクの状態更新 (LINQ なし)
     private void RefreshAllTasksCompletable()
@@ -186,6 +199,8 @@ public class CafePresenter : IStartable, IDisposable
 
         _model.OnStockChanged -= HandleStockChanged;
         _model.OnScoreChanged -= HandleScoreChanged;
+        _model.OnGameTimeUpdated -= HandleGameTimeUpdated;
+        _model.OnGameTimeOver -= HandleGameTimeOver;
 
         // CafeModel は VContainer が管理しているため
         // VContainer が自動的に Dispose を呼びます

@@ -69,4 +69,14 @@ public interface ICafeView
     /// スコア表示を更新する
     /// </summary>
     void UpdateScoreDisplay(int newScore);
+
+    /// <summary>
+    /// ゲームの残り時間表示を更新する
+    /// </summary>
+    void UpdateGameTime(float remainingSeconds);
+
+    /// <summary>
+    /// リザルトポップアップを表示する
+    /// </summary>
+    void ShowResultPopup(GameResult result);
 }
