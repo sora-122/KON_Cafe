@@ -39,6 +39,7 @@ public class CafeModel : IDisposable
 
     // ゲーム設定と状態
     private const float k_GameDuration = 60.0f; // 1プレイ60秒
+    private const float k_ExpConversionRate = 0.1f; // 経験値の変換レート定数 (スコアの10%を経験値とする)
     private float _gameRemainingTime;
 
     // 非同期処理キャンセル用トークン
@@ -180,7 +181,7 @@ public class CafeModel : IDisposable
 
         // 報酬計算 (仮: スコア * クリア時ランク補正)
         int money = Mathf.FloorToInt(_currentScore * bonusRate);
-        int exp = Mathf.FloorToInt(_currentScore * bonusRate);
+        int exp = Mathf.FloorToInt(_currentScore * bonusRate * k_ExpConversionRate);
 
         return new GameResult
         {

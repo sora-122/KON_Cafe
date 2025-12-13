@@ -8,8 +8,9 @@ using System.Collections.Generic;
 [Serializable]
 public class PlayerData
 {
+    public int Rank;
     public int Money;
-    public int Experience;
+    public int Experience; // 現在のランクにおける蓄積経験値
 
     // 所持アイテムの ID リスト (将来用)
     public List<string> OwnedItemIds = new List<string>();
@@ -17,6 +18,7 @@ public class PlayerData
     // コンストラクタ (初期値設定)
     public PlayerData()
     {
+        Rank = 1;
         Money = 0;
         Experience = 0;
     }
