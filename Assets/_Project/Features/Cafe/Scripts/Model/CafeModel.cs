@@ -374,14 +374,3 @@ public class CafeModel : IDisposable
         _cts.Dispose();
     }
 }
-
-/// <summary>
-/// リザルトデータクラス
-/// </summary>
-public class GameResult
-{
-    public int Score;
-    public string Rank;
-    public int Money;
-    public int Experience;
-}

@@ -57,5 +57,12 @@ public class MasterDataInstaller : LifetimeScope
                 .WithParameter<RankExperienceTable>(rankTable)
                 .As<IRankDataRepository>();
         }
+
+        // PlayerDataRepository の登録
+        builder.Register<PlayerDataRepository>(Lifetime.Singleton)
+            .As<IPlayerDataRepository>();
+
+        // UserModel の登録
+        builder.Register<UserModel>(Lifetime.Singleton);
     }
 }
