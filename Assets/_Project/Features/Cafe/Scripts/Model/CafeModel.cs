@@ -21,6 +21,10 @@ public class CafeModel : IDisposable
     // スコア更新イベント
     public event Action<int> OnScoreChanged;
 
+    // ゲーム時間関連イベント
+    public event Action<float> OnGameTimeUpdated;
+    public event Action<GameResult> OnGameTimeOver;
+
     // スロット (本来は動的に増えるが、現時点では固定数2で実装)
     private readonly CookingSlot[] _slots;
 
@@ -32,6 +36,10 @@ public class CafeModel : IDisposable
 
     // 現在のスコア
     private int _currentScore = 0;
+
+    // ゲーム設定と状態
+    private const float k_GameDuration = 60.0f; // 1プレイ60秒
+    private float _gameRemainingTime;
 
     // 非同期処理キャンセル用トークン
     private readonly CancellationTokenSource _cts = new CancellationTokenSource();
@@ -65,6 +73,10 @@ public class CafeModel : IDisposable
     {
         if (_isPlaying) return;
         _isPlaying = true;
+
+        // 制限時間初期化
+        _gameRemainingTime = k_GameDuration;
+        OnGameTimeUpdated?.Invoke(_gameRemainingTime);
 
         // 来店ループを Fire and Forget で開始
         SpawnLoopAsync(_cts.Token).Forget();
@@ -103,6 +115,17 @@ public class CafeModel : IDisposable
             await UniTask.Yield(PlayerLoopTiming.Update, token);
 
             float deltaTime = Time.deltaTime;
+
+            // ゲーム全体の時間経過と終了判定
+            _gameRemainingTime -= deltaTime;
+            OnGameTimeUpdated?.Invoke(_gameRemainingTime);
+
+            if (_gameRemainingTime <= 0)
+            {
+                FinishGame();
+                break; // ループを抜ける
+            }
+
             expiredTaskIds.Clear();
 
             // 全タスクの時間を減らす
@@ -124,6 +147,48 @@ public class CafeModel : IDisposable
                 RemoveTask(id);
             }
         }
+    }
+
+    /// <summary>
+    /// ゲーム終了処理
+    /// </summary>
+    private void FinishGame()
+    {
+        _isPlaying = false;
+        _gameRemainingTime = 0;
+        OnGameTimeUpdated?.Invoke(0);
+
+        // リザルト計算
+        var result = CalculateResult();
+        OnGameTimeOver?.Invoke(result);
+    }
+
+    /// <summary>
+    /// リザルト計算処理
+    /// </summary>
+    private GameResult CalculateResult()
+    {
+        // ランク判定 (仮)
+        // S: 1000点以上, A: 700点以上, B: 400点以上, C: それ未満
+        string rank;
+        float bonusRate;
+
+        if (_currentScore >= 1000) { rank = "S"; bonusRate = 1.2f; }
+        else if (_currentScore >= 700) { rank = "A"; bonusRate = 1.0f; }
+        else if (_currentScore >= 400) { rank = "B"; bonusRate = 0.8f; }
+        else { rank = "C"; bonusRate = 0.5f; }
+
+        // 報酬計算 (仮: スコア * クリア時ランク補正)
+        int money = Mathf.FloorToInt(_currentScore * bonusRate);
+        int exp = Mathf.FloorToInt(_currentScore * bonusRate);
+
+        return new GameResult
+        {
+            Score = _currentScore,
+            Rank = rank,
+            Money = money,
+            Experience = exp
+        };
     }
 
     /// <summary>
@@ -260,6 +325,9 @@ public class CafeModel : IDisposable
     /// <returns> 成功したら true </returns>
     public bool TryCompleteTask(string taskId)
     {
+        // ゲーム終了時は操作無効
+        if (!_isPlaying) return false;
+
         if (!_activeTasks.TryGetValue(taskId, out var task)) return false;
 
         string requiredItemId = task.OrderItem.ItemId;
@@ -287,6 +355,9 @@ public class CafeModel : IDisposable
     // スコア加算メソッド
     private void AddScore(int amount)
     {
+        // ゲーム終了時はスコア加算しない
+        if (!_isPlaying) return;
+
         _currentScore += amount;
         OnScoreChanged?.Invoke(_currentScore);
     }
@@ -302,4 +373,15 @@ public class CafeModel : IDisposable
         _cts.Cancel();
         _cts.Dispose();
     }
+}
+
+/// <summary>
+/// リザルトデータクラス
+/// </summary>
+public class GameResult
+{
+    public int Score;
+    public string Rank;
+    public int Money;
+    public int Experience;
 }

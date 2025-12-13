@@ -11,30 +11,24 @@ public class CafeView : MonoBehaviour, ICafeView
 {
     [Header("UI仕様")]
     [Tooltip("仕様: ステータスバーのエリア")]
-    [SerializeField]
-    private GameObject _statusBarArea;
+    [SerializeField] private GameObject _statusBarArea;
 
     [Tooltip("仕様: タスクバーが表示されるエリア")]
-    [SerializeField]
-    private GameObject _taskBarArea;
+    [SerializeField] private GameObject _taskBarArea;
 
     [Tooltip("仕様: メニュー作成スロットの配置エリア")]
-    [SerializeField]
-    private Transform _menuSlotsArea;
+    [SerializeField] private Transform _menuSlotsArea;
 
     [Header("Prefab参照")]
-    [SerializeField]
-    private MenuSlot _slotPrefab;
+    [SerializeField] private MenuSlot _slotPrefab;
 
     [Header("UI Components")]
-    [SerializeField]
-    private MenuSelectionBar _menuSelectionBar; // プレハブではなくシーン配置 or 生成されたインスタンス
-    [SerializeField]
-    private StockListBar _stockListBar;
-    [SerializeField]
-    private TaskListPanel _taskListPanel;
-    [SerializeField]
-    private ScoreCounter _scoreCounter;
+    [SerializeField] private MenuSelectionBar _menuSelectionBar; // プレハブではなくシーン配置 or 生成されたインスタンス
+    [SerializeField] private StockListBar _stockListBar;
+    [SerializeField] private TaskListPanel _taskListPanel;
+    [SerializeField] private ScoreCounter _scoreCounter;
+    [SerializeField] private GameTimer _gameTimer;
+    [SerializeField] private ResultPopup _resultPopup;
 
 
     // View が管理するスロットのリスト
@@ -119,6 +113,22 @@ public class CafeView : MonoBehaviour, ICafeView
         }
     }
 
+    public void UpdateGameTime(float remainingSeconds)
+    {
+        if (_gameTimer != null)
+        {
+            _gameTimer.UpdateTime(remainingSeconds);
+        }
+    }
+
+    public void ShowResultPopup(GameResult result)
+    {
+        if (_resultPopup != null)
+        {
+            _resultPopup.Show(result.Score, result.Rank, result.Money, result.Experience);
+        }
+    }
+
 
     // --- Unity ライフサイクル ---
 
@@ -132,6 +142,12 @@ public class CafeView : MonoBehaviour, ICafeView
         {
             _menuSelectionBar.Close();
             _menuSelectionBar.OnMenuSelected += HandleMenuSelected;
+        }
+
+        // 初期化: リザルトは非表示
+        if (_resultPopup != null)
+        {
+            _resultPopup.Hide();
         }
 
         // TaskListPanel からのイベント転送
