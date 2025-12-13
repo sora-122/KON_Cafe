@@ -14,6 +14,7 @@ public class CafePresenter : IStartable, IDisposable
     private readonly CafeModel _model;
     private readonly ICafeView _view;
     private readonly IMasterDataRepository _masterData;
+    private readonly UserModel _userModel;
 
     private int _currentSelectedSlotIndex = -1; // 現在選択中のスロット
 
@@ -23,11 +24,14 @@ public class CafePresenter : IStartable, IDisposable
     public CafePresenter(
         CafeModel model,
         ICafeView view,
-        IMasterDataRepository masterData)
+        IMasterDataRepository masterData,
+        UserModel userModel
+        )
     {
         _model = model;
         _view = view;
         _masterData = masterData;
+        _userModel = userModel;
     }
 
     public void Start()
@@ -163,6 +167,10 @@ public class CafePresenter : IStartable, IDisposable
     private void HandleGameTimeOver(GameResult result)
     {
         Debug.Log($"[CafePresenter] Game Over! Score = {result.Score}, Rank: {result.Rank}");
+
+        // UserModel へ処理委譲
+        _userModel.ApplyGameResult(result);
+
         _view.ShowResultPopup(result);
     }
 
