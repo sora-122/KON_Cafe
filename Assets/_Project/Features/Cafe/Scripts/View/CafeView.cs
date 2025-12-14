@@ -17,7 +17,7 @@ public class CafeView : MonoBehaviour, ICafeView
     [SerializeField] private GameObject _taskBarArea;
 
     [Tooltip("仕様: メニュー作成スロットの配置エリア")]
-    [SerializeField] private Transform _menuSlotsArea;
+    [SerializeField] private Transform _slotContainer;
 
     [Header("Prefab参照")]
     [SerializeField] private MenuSlot _slotPrefab;
@@ -167,8 +167,8 @@ public class CafeView : MonoBehaviour, ICafeView
     /// <param name="slotIndex"></param>
     private void SpawnSlot(int slotIndex)
     {
-        // _menuSlotArea を親として _slotPrefab からインスタンスを生成する
-        MenuSlot newSlot = Instantiate(_slotPrefab, _menuSlotsArea);
+        // _slotContainer を親として _slotPrefab からインスタンスを生成する
+        MenuSlot newSlot = Instantiate(_slotPrefab, _slotContainer);
 
         // スロットがクリックされたら、HandleSlotClicked メソッドを呼ぶ
         newSlot.OnClicked += HandleSlotClicked;
