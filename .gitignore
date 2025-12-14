@@ -102,3 +102,6 @@ Assets/_Recovery/
 # 有料アセット隔離用 (Paid Assets)
 Assets/PaidAssets/
 Assets/PaidAssets.meta
+# Android Build generated folders
+*_BackUpThisFolder_ButDontShipItWithYourGame/
+*_BurstDebugInformation_DoNotShip/
