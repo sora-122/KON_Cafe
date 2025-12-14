@@ -64,5 +64,9 @@ public class MasterDataInstaller : LifetimeScope
 
         // UserModel の登録
         builder.Register<UserModel>(Lifetime.Singleton);
+
+        // SceneLoader の登録
+        builder.Register<SceneLoader>(Lifetime.Singleton)
+            .As<ISceneLoader>();
     }
 }
