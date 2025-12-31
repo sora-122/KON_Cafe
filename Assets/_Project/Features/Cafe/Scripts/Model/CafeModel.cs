@@ -11,52 +11,76 @@ using UnityEngine;
 /// </summary>
 public class CafeModel : IDisposable
 {
-    // 在庫更新イベント (ItemID, 新しい在庫数)
-    public event Action<string, int> OnStockChanged;
+    // --- Constants (Magic Numbers) ---
+    // Game Settings
+    private const float k_GameDuration = 60.0f; // 1プレイ60秒
+    private const float k_ExpConversionRate = 0.1f; // 経験値の変換レート (スコアの10%を経験値とする)
 
-    // タスク増減イベント
+    // Spawning
+    private const float k_SpawnWaitMin = 3.0f;
+    private const float k_SpawnWaitMax = 5.0f;
+    private const int k_BaseMaxCustomers = 5;
+    private const int k_ScorePerCustomerDivisor = 500;
+
+    // Rarity Thresholds
+    private const float k_RarityNormalThreshold = 0.6f;
+    private const float k_RarityRareThreshold = 0.9f;
+
+    // Task Settings
+    private const float k_TaskTimeLimitMin = 25.0f;
+    private const float k_TaskTimeLimitMax = 35.0f;
+    private const int k_ScorePerTaskCompletion = 100;
+
+    // Score Ranks
+    private const int k_RankScoreS = 1000;
+    private const int k_RankScoreA = 700;
+    private const int k_RankScoreB = 400;
+
+    // Rank Bonus Rates
+    private const float k_RankBonusS = 1.2f;
+    private const float k_RankBonusA = 1.0f;
+    private const float k_RankBonusB = 0.8f;
+    private const float k_RankBonusC = 0.5f;
+
+    // --- Events ---
+    // Stock Update Event (ItemID, New stock quantity)
+    public event Action<string, int> OnStockChanged;
+    // Task increase/decrease events
     public event Action<CustomerTask> OnTaskAdded;
     public event Action<string> OnTaskRemoved;
-
-    // スコア更新イベント
+    // Score Update Event
     public event Action<int> OnScoreChanged;
-
-    // ゲーム時間関連イベント
+    // Game Time Related Events
     public event Action<float> OnGameTimeUpdated;
     public event Action<GameResult> OnGameTimeOver;
 
-    // スロット (本来は動的に増えるが、現時点では固定数2で実装)
-    private readonly CookingSlot[] _slots;
-
-    //  在庫データ (ItemId -> Count)
+    // --- Fields ---
+    // Slot
+    private readonly CookingSlot[] _slots; // 本来は動的に増えるが、現時点では固定数2で実装
+    // Inventory Data (ItemId -> Count)
     private readonly Dictionary<string, int> _stockInventory = new Dictionary<string, int>();
-
-    // アクティブなタスクリスト (TaskID -> CustomerTask)
+    // Active Task List (TaskID -> CustomerTask)
     private readonly Dictionary<string, CustomerTask> _activeTasks = new Dictionary<string, CustomerTask>();
 
-    // 現在のスコア
+    // Current Score
     private int _currentScore = 0;
-
-    // ゲーム設定と状態
-    private const float k_GameDuration = 60.0f; // 1プレイ60秒
-    private const float k_ExpConversionRate = 0.1f; // 経験値の変換レート定数 (スコアの10%を経験値とする)
+    // Game Time State
     private float _gameRemainingTime;
-
-    // 非同期処理キャンセル用トークン
+    // Game Status
+    private bool _isPlaying = false;
+    // Token for canceling asynchronous processing
     private readonly CancellationTokenSource _cts = new CancellationTokenSource();
-
-    // マスターデータ参照
+    // Master Data Reference
     private readonly IMasterDataRepository _masterData;
 
-    // ゲーム状態
-    private bool _isPlaying = false;
-
-    // カフェ運営シーン (CafeOperation.unity) 起動時 (初期化時) に一度だけ実行するメソッド
+    /// <summary>
+    /// カフェ運営シーン (CafeOperation.unity) 起動時 (初期化時) に一度だけ実行するメソッド
+    /// </summary>
     public CafeModel(IMasterDataRepository masterData)
     {
         _masterData = masterData;
 
-        // スロット初期化 (2つ)
+        // スロット初期化
         _slots = new CookingSlot[2];
         for (int i = 0; i < _slots.Length; i++)
         {
@@ -64,9 +88,7 @@ public class CafeModel : IDisposable
         }
     }
 
-
     // --- ゲームループ開始 ---
-
     /// <summary>
     /// カフェ運営 (来店ループ) を開始する
     /// </summary>
@@ -75,14 +97,10 @@ public class CafeModel : IDisposable
         if (_isPlaying) return;
         _isPlaying = true;
 
-        // 制限時間初期化
         _gameRemainingTime = k_GameDuration;
         OnGameTimeUpdated?.Invoke(_gameRemainingTime);
 
-        // 来店ループを Fire and Forget で開始
         SpawnLoopAsync(_cts.Token).Forget();
-
-        // 時間経過ループを Fire and Forget で開始
         TimeUpdateLoopAsync(_cts.Token).Forget();
     }
 
@@ -93,11 +111,9 @@ public class CafeModel : IDisposable
     {
         while (_isPlaying && !token.IsCancellationRequested)
         {
-            // 3～5秒の範囲でランダムな時間待機
             float waitTime = UnityEngine.Random.Range(3.0f, 5.0f);
             await UniTask.Delay(TimeSpan.FromSeconds(waitTime), cancellationToken: token);
 
-            // 来店処理
             TrySpawnCustomer();
         }
     }
@@ -124,25 +140,23 @@ public class CafeModel : IDisposable
             if (_gameRemainingTime <= 0)
             {
                 FinishGame();
-                break; // ループを抜ける
+                break;
             }
 
             expiredTaskIds.Clear();
 
-            // 全タスクの時間を減らす
+            // 時間切れチェック
             foreach (var kvp in _activeTasks)
             {
                 var task = kvp.Value;
                 task.RemainingTime -= deltaTime;
 
-                // 時間切れチェック
                 if (task.RemainingTime <= 0)
                 {
                     expiredTaskIds.Add(task.TaskId);
                 }
             }
 
-            // 時間切れタスクの削除処理
             foreach (var id in expiredTaskIds)
             {
                 RemoveTask(id);
@@ -159,7 +173,6 @@ public class CafeModel : IDisposable
         _gameRemainingTime = 0;
         OnGameTimeUpdated?.Invoke(0);
 
-        // リザルト計算
         var result = CalculateResult();
         OnGameTimeOver?.Invoke(result);
     }
@@ -174,10 +187,26 @@ public class CafeModel : IDisposable
         string rank;
         float bonusRate;
 
-        if (_currentScore >= 1000) { rank = "S"; bonusRate = 1.2f; }
-        else if (_currentScore >= 700) { rank = "A"; bonusRate = 1.0f; }
-        else if (_currentScore >= 400) { rank = "B"; bonusRate = 0.8f; }
-        else { rank = "C"; bonusRate = 0.5f; }
+        if (_currentScore >= k_RankScoreS)
+        {
+            rank = "S";
+            bonusRate = k_RankBonusS;
+        }
+        else if (_currentScore >= k_RankScoreA)
+        {
+            rank = "A";
+            bonusRate = k_RankBonusA;
+        }
+        else if (_currentScore >= k_RankScoreB)
+        {
+            rank = "B";
+            bonusRate = k_RankBonusB;
+        }
+        else
+        {
+            rank = "C";
+            bonusRate = k_RankBonusC;
+        }
 
         // 報酬計算 (仮: スコア * クリア時ランク補正)
         int money = Mathf.FloorToInt(_currentScore * bonusRate);
@@ -201,7 +230,6 @@ public class CafeModel : IDisposable
         {
             _activeTasks.Remove(taskId);
             OnTaskRemoved?.Invoke(taskId);
-            // 時間切れの場合はスコア加算無し
         }
     }
 
@@ -210,8 +238,8 @@ public class CafeModel : IDisposable
     /// </summary>
     private void TrySpawnCustomer()
     {
-        // 最大来店数制限 (仮: 基本5体 + スコア/500)
-        int maxCustomer = 5 + (_currentScore / 500);
+        // 最大来店数制限 (仮: ベース5体 + スコア/500)
+        int maxCustomer = k_BaseMaxCustomers + (_currentScore / k_ScorePerCustomerDivisor);
         if (_activeTasks.Count >= maxCustomer) return;
 
         // 1. レアリティ抽選
@@ -226,23 +254,29 @@ public class CafeModel : IDisposable
         if (menu == null) return;
 
         // 4. タスク生成と通知
-        // 制限時間 (25秒～35秒) を設定してタスク生成
-        float timeLimit = UnityEngine.Random.Range(25.0f, 35.0f);
+        // 制限時間を設定してタスク生成
+        float timeLimit = UnityEngine.Random.Range(k_TaskTimeLimitMin, k_TaskTimeLimitMax);
         var task = new CustomerTask(Guid.NewGuid().ToString(), animal, menu, timeLimit);
         AddTask(task);
 
         Debug.Log($"[CafeModel] New Customer: {animal.DisplayName} ({rarity}), Order: {menu.DisplayName}, Time: {timeLimit:F1}s");
     }
 
+    /// <summary>
+    /// レアリティ抽選処理
+    /// </summary>
     private AnimalRarity GetRandomRarity()
     {
         // Normal 60%, Rare 30%, SuperRare 10%
         float roll = UnityEngine.Random.value;
-        if (roll < 0.6f) return AnimalRarity.Normal;
-        if (roll < 0.9f) return AnimalRarity.Rare;
+        if (roll < k_RarityNormalThreshold) return AnimalRarity.Normal;
+        if (roll < k_RarityRareThreshold) return AnimalRarity.Rare;
         return AnimalRarity.SuperRare;
     }
 
+    /// <summary>
+    /// 抽選されたレアリティ内のアニマル取得処理
+    /// </summary>
     private AnimalData GetRandomAnimal(AnimalRarity rarity)
     {
         var allAnimals = _masterData.GetAllAnimals();
@@ -257,6 +291,9 @@ public class CafeModel : IDisposable
         return candidates[UnityEngine.Random.Range(0, candidates.Count)];
     }
 
+    /// <summary>
+    /// ランダムなメニュー取得処理
+    /// </summary>
     private MenuItemData GetRandomMenu()
     {
         var allMenus = _masterData.GetAllMenuItems();
@@ -298,8 +335,6 @@ public class CafeModel : IDisposable
         }
 
         _stockInventory[itemId]++;
-
-        // 通知
         OnStockChanged?.Invoke(itemId, _stockInventory[itemId]);
     }
 
@@ -340,12 +375,10 @@ public class CafeModel : IDisposable
             _stockInventory[requiredItemId]--;
             OnStockChanged?.Invoke(requiredItemId, _stockInventory[requiredItemId]);
 
-            // タスク削除
             _activeTasks.Remove(taskId);
             OnTaskRemoved?.Invoke(taskId);
 
-            // タスク完了時にスコア加算 (現時点では固定値 100)
-            AddScore(100);
+            AddScore(k_ScorePerTaskCompletion);
 
             return true;
         }
@@ -353,7 +386,9 @@ public class CafeModel : IDisposable
         return false;
     }
 
-    // スコア加算メソッド
+    /// <summary>
+    /// スコア加算メソッド
+    /// </summary>
     private void AddScore(int amount)
     {
         // ゲーム終了時はスコア加算しない
