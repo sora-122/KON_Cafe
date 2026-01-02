@@ -88,7 +88,7 @@ public class CafeModel : IDisposable
         }
     }
 
-    // --- ゲームループ開始 ---
+    // --- Game Loop Start ---
     /// <summary>
     /// カフェ運営 (来店ループ) を開始する
     /// </summary>
@@ -100,10 +100,12 @@ public class CafeModel : IDisposable
         _gameRemainingTime = k_GameDuration;
         OnGameTimeUpdated?.Invoke(_gameRemainingTime);
 
+        // ループ処理の開始
         SpawnLoopAsync(_cts.Token).Forget();
         TimeUpdateLoopAsync(_cts.Token).Forget();
     }
 
+    // --- Loop Logic ---
     /// <summary>
     /// 定期的にアニマルを来店させるループ
     /// </summary>
@@ -111,7 +113,7 @@ public class CafeModel : IDisposable
     {
         while (_isPlaying && !token.IsCancellationRequested)
         {
-            float waitTime = UnityEngine.Random.Range(3.0f, 5.0f);
+            float waitTime = UnityEngine.Random.Range(k_SpawnWaitMin, k_SpawnWaitMax);
             await UniTask.Delay(TimeSpan.FromSeconds(waitTime), cancellationToken: token);
 
             TrySpawnCustomer();
@@ -123,8 +125,9 @@ public class CafeModel : IDisposable
     /// </summary>
     private async UniTask TimeUpdateLoopAsync(CancellationToken token)
     {
-        // 削除対象を一時保管するリスト (ループ内でのコレクション操作エラー防止)
-        List<string> expiredTaskIds = new List<string>();
+        // 毎フレームのアロケーションを防ぐため、リストはループ外で定義したいが、
+        // Yield 後の状態保持を考慮し、クリアしながら使用する
+        List<string> expiredTaskIds = new List<string>(10);
 
         while (_isPlaying && !token.IsCancellationRequested)
         {
@@ -133,37 +136,48 @@ public class CafeModel : IDisposable
 
             float deltaTime = Time.deltaTime;
 
-            // ゲーム全体の時間経過と終了判定
-            _gameRemainingTime -= deltaTime;
-            OnGameTimeUpdated?.Invoke(_gameRemainingTime);
+            // 1. ゲーム全体時間の更新
+            UpdateGameTimer(deltaTime);
+            if (!_isPlaying) break; // 時間切れで終了した場合
 
-            if (_gameRemainingTime <= 0)
-            {
-                FinishGame();
-                break;
-            }
-
-            expiredTaskIds.Clear();
-
-            // 時間切れチェック
-            foreach (var kvp in _activeTasks)
-            {
-                var task = kvp.Value;
-                task.RemainingTime -= deltaTime;
-
-                if (task.RemainingTime <= 0)
-                {
-                    expiredTaskIds.Add(task.TaskId);
-                }
-            }
-
-            foreach (var id in expiredTaskIds)
-            {
-                RemoveTask(id);
-            }
+            // 2. タスク期限の更新
+            UpdateTasks(deltaTime, expiredTaskIds);
         }
     }
 
+    private void UpdateGameTimer(float deltaTime)
+    {
+        _gameRemainingTime -= deltaTime;
+        OnGameTimeUpdated?.Invoke(_gameRemainingTime);
+
+        if (_gameRemainingTime <= 0)
+        {
+            FinishGame();
+        }
+    }
+
+    private void UpdateTasks(float deltaTime, List<string> expiredTaskIds)
+    {
+        expiredTaskIds.Clear();
+
+        foreach (var kvp in _activeTasks)
+        {
+            var task = kvp.Value;
+            task.RemainingTime -= deltaTime;
+
+            if (task.RemainingTime <= 0)
+            {
+                expiredTaskIds.Add(task.TaskId);
+            }
+        }
+
+        foreach (var id in expiredTaskIds)
+        {
+            RemoveTask(id);
+        }
+    }
+
+    // --- Core Logic ---
     /// <summary>
     /// ゲーム終了処理
     /// </summary>
@@ -259,7 +273,8 @@ public class CafeModel : IDisposable
         var task = new CustomerTask(Guid.NewGuid().ToString(), animal, menu, timeLimit);
         AddTask(task);
 
-        Debug.Log($"[CafeModel] New Customer: {animal.DisplayName} ({rarity}), Order: {menu.DisplayName}, Time: {timeLimit:F1}s");
+        // ログは開発時のみ、または重要なイベント時のみに限定
+        // Debug.Log($"[CafeModel] New Customer: {animal.DisplayName} ({rarity}), Order: {menu.DisplayName}, Time: {timeLimit:F1}s");
     }
 
     /// <summary>
@@ -379,10 +394,8 @@ public class CafeModel : IDisposable
             OnTaskRemoved?.Invoke(taskId);
 
             AddScore(k_ScorePerTaskCompletion);
-
             return true;
         }
-
         return false;
     }
 

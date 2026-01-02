@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Pool;
 
 /// <summary>
 /// 発生したタスク一覧を表示・管理する View クラス
+/// ObjectPool を使用し、GCAlloc を抑制する
 /// </summary>
 public class TaskListPanel : MonoBehaviour
 {
@@ -15,16 +17,46 @@ public class TaskListPanel : MonoBehaviour
 
     // ID検索用ディクショナリ (O(1)アクセス)
     // List から Dictionary に変更して検索を高速化
-    // private readonly List<TaskBarElement> _activeElements = new List<TaskBarElement>();
     private readonly Dictionary<string, TaskBarElement> _elements = new Dictionary<string, TaskBarElement>();
+
+    // オブジェクトプールの定義
+    private IObjectPool<TaskBarElement> _taskPool;
+
+    private void Awake()
+    {
+        // プールの初期化
+        _taskPool = new ObjectPool<TaskBarElement>(
+            createFunc: () =>
+            {
+                var element = Instantiate(_elementPrefab, _container);
+                return element;
+            },
+            actionOnGet: (element) =>
+            {
+                element.gameObject.SetActive(true);
+                // 順序制御のため、Get時に最後の子要素として最下部に配置
+                element.transform.SetAsLastSibling();
+            },
+            actionOnRelease: (element) =>
+            {
+                element.gameObject.SetActive(false);
+            },
+            actionOnDestroy: (element) =>
+            {
+                Destroy(element.gameObject);
+            },
+            collectionCheck: true, // 同一インスタンスの二重Releaseチェック
+            defaultCapacity: 10,
+            maxSize: 20
+        );
+    }
 
     /// <summary>
     /// 新しいタスクを表示に追加する
     /// </summary>
     public void AddTask(CustomerTask task)
     {
-        // 今回は単純に Instantiate (将来はプーリング化)
-        var element = Instantiate(_elementPrefab, _container);
+        var element = _taskPool.Get();
         element.Initialize(task);
 
         // イベント購読
@@ -40,10 +72,10 @@ public class TaskListPanel : MonoBehaviour
     {
         if (_elements.TryGetValue(taskId, out var element))
         {
-            // 破棄処理
+            // イベント購読解除
             element.OnClicked -= HandleElementClicked;
-            Destroy(element.gameObject);
             _elements.Remove(taskId);
+            _taskPool.Release(element);
         }
     }
 
