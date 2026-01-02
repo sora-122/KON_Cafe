@@ -64,8 +64,9 @@ public class CafeView : MonoBehaviour, ICafeView
 
     public void UpdateStockDisplay(string itemId, int newCount)
     {
+        // 頻繁に呼ばれるためログ削除 (GC対策)
         // ストック数の増加確認ログ
-        Debug.Log($"[CafeView] 在庫更新: {itemId} = {newCount}個");
+        // Debug.Log($"[CafeView] 在庫更新: {itemId} = {newCount}個");
 
         if (_stockListBar != null)
         {
@@ -131,7 +132,6 @@ public class CafeView : MonoBehaviour, ICafeView
 
 
     // --- Unity ライフサイクル ---
-
     /// <summary>
     /// 検証のため、ダミーのスロットを生成する
     /// </summary>
@@ -184,9 +184,10 @@ public class CafeView : MonoBehaviour, ICafeView
         // クリックされたスロットがリストの何番目か (＝インデックス) を特定する
         int index = _instantiatedSlots.IndexOf(clickedSlot);
 
+        // テスト用、かつ頻繁に呼ばれるためログ削除 (GC対策)
         // --- 受入基準の達成 ---
         // スロットをタップすると、コンソールログ等でタップイベントが確認できる
-        Debug.Log($"[CafeView] メニュースロット {index} がタップされました。");
+        // Debug.Log($"[CafeView] メニュースロット {index} がタップされました。");
 
         // Presenter (購読者がいれば) インデックスを通知
         OnMenuSlotClicked?.Invoke(index);
@@ -203,11 +204,11 @@ public class CafeView : MonoBehaviour, ICafeView
     // バーでメニューが選ばれた時の挙動
     private void HandleMenuSelected(string menuId)
     {
+        // 頻繁に呼ばれるためログ削除 (GC対策)
         // ID ログ確認 & 閉じる
-        Debug.Log($"[CafeView] Menu Selected: ID = {menuId}");
+        // Debug.Log($"[CafeView] Menu Selected: ID = {menuId}");
 
         _menuSelectionBar.Close();
-
         OnMenuSelected?.Invoke(menuId);
     }
 }
